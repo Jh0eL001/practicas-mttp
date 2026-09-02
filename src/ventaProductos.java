@@ -1,5 +1,8 @@
 
 import javax.swing.JOptionPane;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
@@ -16,6 +19,7 @@ public class ventaProductos extends javax.swing.JFrame {
      */
     public ventaProductos() {
         initComponents();
+        cargarProductosCombo();
     }
 
     /**
@@ -185,49 +189,47 @@ public class ventaProductos extends javax.swing.JFrame {
     }//GEN-LAST:event_cboProductoActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-        // TODO add your handling code here:
-        // 1. Obtener datos de la interfaz
         String producto = cboProducto.getSelectedItem().toString();
         int cantidad = Integer.parseInt(txtCantidad.getText());
         String formaPago = cboFormaPago.getSelectedItem().toString();
 
-        // 2. Determinar precio y descuento por producto
         double precioBase = 0.0;
         double descProdPct = 0.0;
 
-        if (producto.equals("Brochas de Cerda")) {
-            precioBase = 20.00;
-            descProdPct = 0.20; // 20%
-        } else if (producto.equals("Rodillos")) {
-            precioBase = 45.00;
-            descProdPct = 0.15; // 15%
-        } else if (producto.equals("Sellador")) {
-            precioBase = 10.00;
-            descProdPct = 0.05; // 5%
+        // Obtener datos desde la base de datos MySQL
+        try {
+            Connection con = Conexion.getConexion();
+            PreparedStatement ps = con.prepareStatement("SELECT precio, descuento FROM productos WHERE nombre = ?");
+            ps.setString(1, producto);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                precioBase = rs.getDouble("precio");
+                descProdPct = rs.getDouble("descuento");
+            }
+            con.close();
+        } catch (Exception e) {
+            System.out.println("Error al consultar DB: " + e.getMessage());
         }
 
-        // 3. Cálculos
+        // El resto de tus cálculos permanece exactamente igual
         double subtotal = cantidad * precioBase;
         double descProducto = subtotal * descProdPct;
         double subtotalConDesc = subtotal - descProducto;
 
         double descContado = 0.0;
-        if (formaPago.equals("Contado")) {
-            descContado = subtotalConDesc * 0.07; // 7% extra
+        if (formaPago.equalsIgnoreCase("Contado")) {
+            descContado = subtotalConDesc * 0.07;
         }
 
         double totalPagar = subtotalConDesc - descContado;
 
-        // 4. Mostrar en el JTextArea
         txtResumen.setText("Producto: " + producto + "\n"
                 + "Cantidad: " + cantidad + "\n"
                 + "Subtotal: $" + subtotal + "\n"
-                + "Descuento producto: $" + descProducto + "\n"
-                + "Descuento contado: $" + descContado + "\n"
+                + "Descuento producto: $" + String.format("%.2f",descProducto) + "\n"
+                + "Descuento contado: $" + String.format("%.2f",descContado) + "\n"
                 + "TOTAL A PAGAR: $" + totalPagar);
-
-        // 5. Ejemplo JOptionPane Informativo
-        JOptionPane.showMessageDialog(this, "El total a pagar es: $" + totalPagar);
 
     }//GEN-LAST:event_jButton2ActionPerformed
 
@@ -296,6 +298,24 @@ public class ventaProductos extends javax.swing.JFrame {
                 new ventaProductos().setVisible(true);
             }
         });
+    }
+
+    // Método auxiliar para llenar el ComboBox desde la BD
+    public void cargarProductosCombo() {
+        cboProducto.removeAllItems(); // Limpia las opciones por defecto
+
+        try {
+            Connection con = Conexion.getConexion();
+            PreparedStatement ps = con.prepareStatement("SELECT nombre FROM productos");
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                cboProducto.addItem(rs.getString("nombre")); // Añade cada producto
+            }
+            con.close();
+        } catch (Exception e) {
+            System.out.println("Error al cargar combo: " + e.getMessage());
+        }
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
